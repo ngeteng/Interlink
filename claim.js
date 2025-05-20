@@ -11,7 +11,6 @@ const https = require('https');
 const API_BASE_URL = 'https://prod.interlinklabs.ai/api/v1';
 const TOKEN_FILE_PATH = path.join(__dirname, 'token.txt');
 const PROXIES_FILE_PATH = path.join(__dirname, 'proxies.txt');
-const CLAIM_INTERVAL_MS = 4 * 60 * 60 * 1000; 
 
 const colors = {
   green: '\x1b[32m',
