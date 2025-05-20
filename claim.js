@@ -358,6 +358,12 @@ async function runBot() {
           ? now + CLAIM_INTERVAL_MS
           : (nextFrame || (now + CLAIM_INTERVAL_MS));
         logger.info(`Next claim scheduled at ${moment(nextClaimTime).format('YYYY-MM-DD HH:mm:ss')}`);
+        if (success) {
+          const updatedUserInfo = await getCurrentUser(apiClient);
+          const updatedTokenInfo = await getTokenBalance(apiClient);
+          const msg = `✅ Airdrop Claimed\n\n👤 ${updatedUserInfo.username}\n💰 Balance: ${updatedTokenInfo.interlinkTokenAmount}\n🕒 Last Claim: ${moment(updatedTokenInfo.lastClaimTime).format('YYYY-MM-DD HH:mm:ss')}`;
+          sendToTelegram(msg);
+        }
       } catch (err) {
         logger.error(`Unexpected error during claim: ${err.message}`);
         // Opsi: atur ulang nextClaimTime di sini atau exit
