@@ -17,10 +17,3 @@ Bot ini membantu Anda melakukan klaim secara otomatis tanpa perlu membuka websit
 - 🌈 Tampilan CLI berwarna dan interaktif
 
 ---
-
-## 🚀 Cara Instalasi
-
-### 1. Clone repository
-bash
-git clone https://github.com/kamu/interlink-auto-bot.git
-cd interlink-auto-bot
