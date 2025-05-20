@@ -320,12 +320,7 @@ async function runBot() {
   logger.banner();
 
   // Baca file proxies jika ada
-  const proxies = fs.existsSync(PROXIES_FILE_PATH)
-    ? fs.readFileSync(PROXIES_FILE_PATH, 'utf8')
-        .split('\n')
-        .map(l => l.trim())
-        .filter(l => l && !l.startsWith('#'))
-    : [];
+  const proxies = readProxies();
 
   // Baca token atau lakukan login
   let token = readToken();
