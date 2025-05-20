@@ -1,5 +1,6 @@
 const axios = require('axios');
 const fs = require('fs');
+const { sendReport } = require('./telegramReporter');
 const path = require('path');
 const moment = require('moment');
 const readline = require('readline');
@@ -362,7 +363,7 @@ async function runBot() {
           const updatedUserInfo = await getCurrentUser(apiClient);
           const updatedTokenInfo = await getTokenBalance(apiClient);
           const msg = `✅ Airdrop Claimed\n\n👤 ${updatedUserInfo.username}\n💰 Balance: ${updatedTokenInfo.interlinkTokenAmount}\n🕒 Last Claim: ${moment(updatedTokenInfo.lastClaimTime).format('YYYY-MM-DD HH:mm:ss')}`;
-          sendToTelegram(msg);
+          sendReport(msg);
         }
       } catch (err) {
         logger.error(`Unexpected error during claim: ${err.message}`);
