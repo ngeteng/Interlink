@@ -241,12 +241,18 @@ async function checkIsClaimable(apiClient) {
 
 async function claimAirdrop(apiClient) {
   try {
-    const response = await apiClient.post('/token/claim-airdrop');
+    await apiClient.post('/token/claim-airdrop');
     logger.success(`Airdrop claimed successfully!`);
-    return response.data;
-  } catch (error) {
-    logger.error(`Error claiming airdrop: ${error.response?.data?.message || error.message}`);
-    return null;
+    return { success: true, nextFrame: null };
+  } catch (e) {
+    const errData = e.response?.data;
+    if (errData?.code === 'TOKEN_CLAIM_TOO_EARLY' && errData.data?.nextFrame) {
+      const nf = errData.data.nextFrame;
+      logger.warn(`Too early to claim. Next allowed at ${moment(nf).format('YYYY-MM-DD HH:mm:ss')}`);
+      return { success: false, nextFrame: nf };
+    }
+    logger.error(`Error claiming airdrop: ${errData?.message || e.message}`);
+    return { success: false, nextFrame: null };
   }
 }
 
@@ -394,30 +400,66 @@ async function runBot() {
           nextClaimTime = newNextFrame;
         });
       }
-    };
-    
-    setInterval(updateCountdown, 1000);
-    
-    const scheduleNextCheck = () => {
-      const now = Date.now();
-      const timeUntilNextCheck = Math.max(1000, nextClaimTime - now);
-      
-      setTimeout(async () => {
-        logger.step(`Scheduled claim time reached.`);
-        nextClaimTime = await attemptClaim();
-        scheduleNextCheck();
-      }, timeUntilNextCheck);
-    };
-    
-    scheduleNextCheck();
-    
-    logger.success(`Bot is running! Airdrop claims will be attempted automatically.`);
-    logger.info(`Press Ctrl+C to exit`);
-    
-  } catch (error) {
-    logger.error(`Unexpected error: ${error.message}`);
-    process.exit(1);
+async function runBot() {
+  clear();
+  logger.banner();
+
+  // Baca file proxies jika ada
+  const proxies = fs.existsSync(PROXIES_FILE_PATH)
+    ? fs.readFileSync(PROXIES_FILE_PATH, 'utf8')
+        .split('\n')
+        .map(l => l.trim())
+        .filter(l => l && !l.startsWith('#'))
+    : [];
+
+  // Baca token atau lakukan login
+  let token = readToken();
+  if (!token) {
+    token = await login(proxies);
+    if (!token) process.exit(1);
   }
+
+  // Siapkan API client dengan token
+  const apiClient = createApiClient(token);
+
+  // Tampilkan informasi user & token (opsional)
+  const userInfo = await getCurrentUser(apiClient);
+  const tokenInfo = await getTokenBalance(apiClient);
+  displayUserInfo(userInfo, tokenInfo);
+
+  // ===== LOOP UTAMA UNTUK CLAIM OTOMATIS =====
+  const CLAIM_INTERVAL_MS = 4 * 60 * 60 * 1000; // fallback 4 jam
+
+  // Ambil jadwal klaim pertama kali dari API
+  const { nextFrame: initialFrame } = await checkIsClaimable(apiClient);
+  let nextClaimTime = initialFrame;
+  logger.info(`Next claim slot: ${moment(nextClaimTime).format('YYYY-MM-DD HH:mm:ss')}`);
+
+  // Loop per detik: cek apakah sudah waktunya klaim
+  setInterval(async () => {
+    const now = Date.now();
+
+    if (now >= nextClaimTime) {
+      logger.step(`Attempting claim at ${moment(now).format('HH:mm:ss')}`);
+      try {
+        const { success, nextFrame } = await claimAirdrop(apiClient);
+        // Jika sukses: jadwalkan +4 jam; jika terlalu awal: pakai nextFrame
+        nextClaimTime = success
+          ? now + CLAIM_INTERVAL_MS
+          : (nextFrame || (now + CLAIM_INTERVAL_MS));
+        logger.info(`Next claim scheduled at ${moment(nextClaimTime).format('YYYY-MM-DD HH:mm:ss')}`);
+      } catch (err) {
+        logger.error(`Unexpected error during claim: ${err.message}`);
+        // Opsi: atur ulang nextClaimTime di sini atau exit
+      }
+    } else {
+      const diff = nextClaimTime - now;
+      process.stdout.write(`\rNext claim in ${moment(diff).utc().format('HH:mm:ss')}   `);
+    }
+  }, 1000);
+
+  logger.success(`Bot is running! Airdrop claims will be attempted automatically.`);
+  logger.info(`Press Ctrl+C to exit`);
 }
 
 runBot().finally(() => rl.close());
