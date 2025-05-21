@@ -362,8 +362,25 @@ async function runBot() {
         if (success) {
           const updatedUserInfo = await getCurrentUser(apiClient);
           const updatedTokenInfo = await getTokenBalance(apiClient);
-          const msg = `✅ Airdrop Claimed\n\n👤 ${updatedUserInfo.username}\n💰 Balance: ${updatedTokenInfo.interlinkTokenAmount}\n🕒 Last Claim: ${moment(updatedTokenInfo.lastClaimTime).format('YYYY-MM-DD HH:mm:ss')}`;
-          sendReport(msg);
+          const {
+            interlinkGoldTokenAmount = 0,
+            interlinkSilverTokenAmount = 0,
+            interlinkDiamondTokenAmount = 0,
+            interlinkTokenAmount: totalBalance = 0,
+            lastClaimTime
+          } = updatedTokenInfo;
+
+          const msgLines = [
+            '✅ *Airdrop Claimed!*',
+            '',
+            `👤 *${updatedUserInfo.username}*`,
+            `💰 *Total Balance:* ${totalBalance}`,
+            `   • Gold: ${interlinkGoldTokenAmount}`,
+            `   • Silver: ${interlinkSilverTokenAmount}`,
+            `   • Diamond: ${interlinkDiamondTokenAmount}`,
+            `🕒 *Last Claim:* ${moment(lastClaimTime).format('YYYY-MM-DD HH:mm:ss')}`
+            ];
+          sendReport(msgLines.join('\n'));
         }
       } catch (err) {
         logger.error(`Unexpected error during claim: ${err.message}`);
